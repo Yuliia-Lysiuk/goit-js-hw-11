@@ -1,59 +1,83 @@
-import 'simplelightbox/dist/simple-lightbox.min.css';
-import SimpleLightbox from 'simplelightbox';
-import QueryToApi from "./fetchAPI";
+import axios from 'axios';
+import './css/styles.css';
 import { Notify } from 'notiflix/build/notiflix-notify-aio';
+import SimpleLightbox from 'simplelightbox';
+import 'simplelightbox/dist/simple-lightbox.min.css';
 
-const queryToApi = new QueryToApi();
 
-const refs= {
-    form: document.querySelector('#search-form'),
-    button: document.querySelector('button[type="submit"]'),
-    gallery: document.querySelector('.gallery'),
-    input: document.querySelector('input[name="searchQuery"]'),
-    loadMoreBtn: document.querySelector('.load-more'),
-}
+const form = document.querySelector("#search-form");
+const galleryConteiner = document.querySelector(".gallery");
+const loadMoreBtn = document.querySelector(".load-more");
 
-refs.loadMoreBtn.classList.add('is-hidden');
+hideBtnLoadMore()
 
-refs.form.addEventListener('submit', onFormSubmit);
-refs.loadMoreBtn.addEventListener('click', onLoadMoreClick)
+form.addEventListener("submit", onSubmit);
 
-function onFormSubmit(evt) {
-  
-  evt.preventDefault(evt);
-  refs.gallery.innerHTML = '';
-  queryToApi.query = evt.currentTarget.elements.searchQuery.value;
-  queryToApi.resetPage();
-  if (!queryToApi.query) {
-         refs.gallery.innerHTML = ''; 
-      return Notify.warning("Enter your search query, please!");  
+let page = 1;
+
+let limit = 40;
+
+const totalPages = 500 / limit;
+
+let fetchItems;
+let gallery = new SimpleLightbox('.gallery a');
+async function onSubmit(e) {
+    e.preventDefault();
+    const inputValue = e.target.searchQuery.value;
+    if (!inputValue) {
+        clearGalleryConteiner();
+        hideBtnLoadMore();
+      return Notify.warning("Enter your search query, please!");
     }
-  queryToApi.getDataFromAPI()
-    .then(response => {
-      Notify.success(`Hooray! We found ${response.totalHits} images.`);
-      const checkAmountOfHits = (response.totalHits / response.hits.length) < 1 ?
-        refs.loadMoreBtn.classList.add('is-hidden') :
-        refs.loadMoreBtn.classList.remove('is-hidden');
-    
-      return response;
-    })
-    .then(createCardMarkup)
-    .then(() => {
-      let gallery = new SimpleLightbox('.gallery a');
-      
-      return gallery;
-    })
-
-  refs.form.reset();
- 
+    galleryConteiner.innerHTML = ''
+    page = 1
+    fetchItems = async function() {
+      try {
+        const photo = await fetchPhoto(inputValue);
+        renderPhoto(photo);
+          page += 1; 
+     
+        loadMoreBtn.addEventListener("click", onLoadMore)
+        gallery.refresh();
+      } catch (error) {
+        console.dir(error);
+      }
+    }
+    fetchItems()
+    form.reset();
 }
 
+async function fetchPhoto(inputValue) {
+  try {
+    const response = await axios.get(`https://pixabay.com/api/?key=24419358-338d9960aaa56c480bc3e3cda&q=${inputValue}&page=${page}&image_type=photo&orientation=horizontal&safesearch=true&webformatURL&largeImageURL&tags&likes&views&comments&downloads&per_page=40`);
+    return response.data
+  } catch (e) {
+    return Promise.reject(e);
+  }
+}
 
+function renderPhoto(photos) {
 
-function createCardMarkup({ hits }) {
-  
-  const markup = hits.map(({ tags, likes, webformatURL, comments, downloads, views, largeImageURL }) => {
-    return `<a href="${largeImageURL}" class="photo-card">
+    if (photos.total === 0) {
+        clearGalleryConteiner();
+        hideBtnLoadMore();
+        return Notify.failure("Sorry, there are no images matching your search query. Please try again.");
+    } else if (photos.total < 41) {
+
+        showBtnLoadMore();
+        loadMoreBtn.addEventListener("click", () => {
+            loadMoreBtn.getAttribute('disabled')
+            hideBtnLoadMore();
+            Notify.info("We're sorry, but you've reached the end of search results.")
+        }
+        );
+    } 
+    showBtnLoadMore();
+    
+        Notify.success(`Hooray! We found ${photos.totalHits} images.`);
+    
+    const markup = photos.hits.map(({ tags, likes, webformatURL, comments, downloads, views, largeImageURL }) => {
+        return `<a href="${largeImageURL}" class="photo-card">
             <img class="img" src="${webformatURL}" alt="${tags}" width="310" height="207" loading="lazy" />
             <div class="info">
                 <p class="info-item">
@@ -74,48 +98,29 @@ function createCardMarkup({ hits }) {
                 </p>
             </div>
         </a>`
-  }).join('');
+    }).join("");
+
+    return galleryConteiner.insertAdjacentHTML("beforeend", markup);
+          
     
-    refs.gallery.insertAdjacentHTML('beforeend', markup);
-   
-
 }
 
-function onLoadMoreClick(response) {
-
-  queryToApi.getDataFromAPI()
-    .then(response => {
-         console.log(response.totalHits);
-      console.log(response.hits.length)
-        const checkAmountOfHits = (response.totalHits / response.hits.length) <= 1 ?
-        refs.loadMoreBtn.classList.add('is-hidden') :
-        refs.loadMoreBtn.classList.remove('is-hidden');
-      return response;
-    }).then(createCardMarkup)
-    .then(() => {
-      let gallery = new SimpleLightbox('.gallery a');
-   
-      return gallery;
-    }).then(() => {
-      const { height: cardHeight } = document
-      .querySelector('.gallery')
-      .firstElementChild.getBoundingClientRect();
-      window.scrollBy({
-        top: cardHeight * 2,
-        behavior: 'smooth',
-      });
-    });;
-  
+function clearGalleryConteiner() {
+    galleryConteiner.innerHTML = '';
 }
 
-function checkAmountOfHits() {
-  
-     if ((response.totalHits/response.hits.length)<=1) {
-     refs.loadMoreBtn.classList.add('is-hidden');
-      }
+function hideBtnLoadMore() {
+    loadMoreBtn.classList.add('is-hidden');
+}
 
-        refs.loadMoreBtn.classList.remove('is-hidden');
-      
-  
-  
+function showBtnLoadMore() {
+    loadMoreBtn.classList.remove('is-hidden');
+}
+
+function onLoadMore() {
+  if (fetchItems) {
+      fetchItems();
+          
+    }
+     
 }

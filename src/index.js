@@ -55,21 +55,31 @@ async function fetchPhoto(inputValue) {
 }
 
 function renderPhoto(photos) {
-  console.log(photos);
+
   if (photos.total === 0) {
     clearGalleryConteiner();
     hideBtnLoadMore();
     return Notify.failure("Sorry, there are no images matching your search query. Please try again.");
   }
+  if (page === 1) {
+    Notify.success(`Hooray! We found ${photos.totalHits} images.`);  
+  }
   showBtnLoadMore();
-      Notify.success(`Hooray! We found ${photos.totalHits} images.`);
+    
       makeCard(photos);
-  if  (photos.total < 41 || photos.hits.length < 40) {
+   if  (photos.total < 41 || photos.hits.length < 40) {
     Notify.info("We're sorry, but you've reached the end of search results.");
     return hideBtnLoadMore();
   }
-      showBtnLoadMore();
-      makeCard(photos);
+  
+   const { height: cardHeight } = document
+    .querySelector('.gallery')
+    .firstElementChild.getBoundingClientRect();
+
+  window.scrollBy({
+    top: cardHeight * 2 + 180,
+    behavior: 'smooth',
+  });
 }
 
 function clearGalleryConteiner() {
@@ -85,9 +95,12 @@ function showBtnLoadMore() {
 }
 
 function onLoadMore() {
+ 
   if (fetchItems) {
-      fetchItems();     
-    }
+    fetchItems();
+    
+  }
+  
 }
       
 function makeCard(photos) {

@@ -1,8 +1,9 @@
-import axios from 'axios';
+
 import './css/styles.css';
 import { Notify } from 'notiflix/build/notiflix-notify-aio';
 import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
+import { fetchPhoto } from './fetchAPI';
 
 
 const form = document.querySelector("#search-form");
@@ -14,8 +15,6 @@ hideBtnLoadMore()
 form.addEventListener("submit", onSubmit);
 
 let page = 1;
-
-let per_page = 40;
 
 let fetchItems;
 let gallery = new SimpleLightbox('.gallery a');
@@ -29,10 +28,10 @@ async function onSubmit(e) {
     }
     galleryConteiner.innerHTML = ''
   page = 1;
-  per_page = 40;
+ 
     fetchItems = async function() {
       try {
-        const photo = await fetchPhoto(inputValue);
+        const photo = await fetchPhoto(inputValue, page);
         renderPhoto(photo);
         page += 1;
         loadMoreBtn.addEventListener("click", onLoadMore)
@@ -43,15 +42,6 @@ async function onSubmit(e) {
     }
     fetchItems()
     form.reset();
-}
-
-async function fetchPhoto(inputValue) {
-  try {
-    const response = await axios.get(`https://pixabay.com/api/?key=24419358-338d9960aaa56c480bc3e3cda&q=${inputValue}&page=${page}&image_type=photo&orientation=horizontal&safesearch=true&webformatURL&largeImageURL&tags&likes&views&comments&downloads&per_page=${per_page}`);
-    return response.data
-  } catch (e) {
-    return Promise.reject(e);
-  }
 }
 
 function renderPhoto(photos) {
@@ -77,7 +67,7 @@ function renderPhoto(photos) {
     .firstElementChild.getBoundingClientRect();
 
   window.scrollBy({
-    top: cardHeight * 2 + 180,
+    top: cardHeight * 2 + 207,
     behavior: 'smooth',
   });
 }
